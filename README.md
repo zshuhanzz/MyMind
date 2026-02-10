@@ -1,19 +1,17 @@
 # My Mind
 
-A mental wellness web app where users can check in with their mood daily, talk to an AI companion named Luna, write journal entries, and track their emotional patterns over time.
+A mental wellness web app where users can check in with their mood daily, talk to an AI friend, write journal entries, and track their emotional patterns over time.
 
 ## Tech Stack
 
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Recharts
+- **Frontend:** React , TypeScript, Vite, Tailwind, Recharts
 - **Backend:** Node.js, Express, TypeScript
 - **Database:** PostgreSQL
-- **AI:** Google Gemini API (gemini-2.5-flash)
+- **AI:** Google Gemini API 
 
-## Prerequisites
-
-Make sure you have these installed to run locally: Node.js, PostgreSQL, Google gemini API key
 
 ###1. Clone the repository
+
 ```bash
 cd "desired file location"
 git clone "repo url">
@@ -21,7 +19,7 @@ git clone "repo url">
 
 ### 2. Install dependencies
 
-run this at the root:
+Make sure you have nodejs installed. Run this at the root:
 
 ```bash
 npm install
