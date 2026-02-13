@@ -13,7 +13,6 @@
     "@fontsource/inter": "^5.1.0",
     "@fontsource/nunito": "^5.1.0",
     "axios": "^1.7.0",
-    "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

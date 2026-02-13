@@ -47,15 +47,13 @@ export const crisisDetectionService = {
     return CRISIS_RESOURCES;
   },
 
-  buildImmediateCrisisResponse(): string {
-    return `I'm really glad you shared that with me. Your safety matters deeply, and I want to make sure you get the support you need right now.
+  crisisResponse(): string {
+    return `Thank you for sharing that with me. You matter to me and I want to make sure you get the support you need right now. Please reach out to the professionals:
 
-Please reach out to people who are trained to help:
-
-- **988 Suicide & Crisis Lifeline** — Call or text 988 (available 24/7)
-- **Crisis Text Line** — Text HOME to 741741 (available 24/7)
+- **988 Suicide & Crisis Lifeline** — Call or text 988 
+- **Crisis Text Line** — Text HOME to 741741
 - **Emergency Services** — Call 911 or your local emergency number
 
-You don't have to go through this alone. These are people who genuinely care and want to help. Will you reach out to one of them?`;
+These people genuinely want to help you. Will you reach out to one of them?`;
   },
 };

@@ -44,7 +44,8 @@ export default function ChatPage() {
 
   const startConversation = async (firstMessage?: string) => {
     try {
-      const { data: conv } = await apiClient.post('/conversations', {});
+      const res = await apiClient.post('/conversations', {});
+      const conv = res.data;
       setConversations([conv, ...conversations]);
       navigate(`/chat/${conv.id}`);
       if (firstMessage) {
@@ -57,44 +58,47 @@ export default function ChatPage() {
   };
 
   const sendMessage = async (convId: string, content: string) => {
-    // add user message to the list right away
+    // show the users message in the chat right away
     const userMsg: Message = {
-      id: `temp-${Date.now()}`,
+      id: 'temp-' + Date.now(),
       conversationId: convId,
       role: 'user',
       content,
       isCrisisFlagged: false,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages([...messages, userMsg]);
     setSending(true);
 
     try {
       const { data } = await apiClient.post(`/conversations/${convId}/messages`, { content });
 
-      // add ai response
-      setMessages((prev) => [...prev, {
+      // add lunas response to the chat
+      const lunaMsg: Message = {
         id: data.message.id,
         conversationId: convId,
         role: 'assistant',
         content: data.message.content,
         isCrisisFlagged: data.crisisDetected,
         createdAt: new Date().toISOString(),
-      }]);
+      };
+      setMessages([...messages, userMsg, lunaMsg]);
 
       if (data.crisisDetected) setShowCrisisResources(true);
 
       // refresh conversation titles
       apiClient.get('/conversations').then((r) => setConversations(r.data)).catch(() => {});
     } catch {
-      setMessages((prev) => [...prev, {
-        id: `error-${Date.now()}`,
+      // show error message if something went wrong
+      const errorMsg: Message = {
+        id: 'error-' + Date.now(),
         conversationId: convId,
         role: 'assistant',
         content: "I'm having a little trouble right now. Could you try again?",
         isCrisisFlagged: false,
         createdAt: new Date().toISOString(),
-      }]);
+      };
+      setMessages([...messages, userMsg, errorMsg]);
     }
     setSending(false);
   };

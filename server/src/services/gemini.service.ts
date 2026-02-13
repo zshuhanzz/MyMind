@@ -5,37 +5,57 @@ import { checkInRepository } from '../repositories/check-in.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { conversationRepository } from '../repositories/conversation.repository.js';
 import { crisisDetectionService } from './crisis-detection.service.js';
-import { buildSystemPrompt, type UserContext } from '../prompts/system-prompt.js';
+import { buildSystemPrompt } from '../prompts/system-prompt.js';
 import logger from '../utils/logger.js';
 
 export const geminiService = {
-  async buildUserContext(userId: string): Promise<UserContext> {
+  // get info about the user so luna knows whats going on
+  async buildUserContext(userId: string): Promise<any> {
     const user = await userRepository.findById(userId);
     const latestMood = await moodEntryRepository.getLatest(userId);
     const recentMoods = await moodEntryRepository.findByUser(userId, 5);
     const streak = await checkInRepository.getStreak(userId);
 
-    const emotions = recentMoods.flatMap((m) => m.emotion_tags);
-    const uniqueEmotions = [...new Set(emotions)].slice(0, 5);
+    // get unique emotions from recent moods
+    let uniqueEmotions: string[] = [];
+    for (let i = 0; i < recentMoods.length; i++) {
+      const tags = recentMoods[i].emotion_tags;
+      for (let j = 0; j < tags.length; j++) {
+        if (!uniqueEmotions.includes(tags[j])) {
+          uniqueEmotions.push(tags[j]);
+        }
+      }
+    }
+    uniqueEmotions = uniqueEmotions.slice(0, 5);
 
+    // figure out mood trend. Just compare first and last mood
     let moodTrend: string | null = null;
     if (recentMoods.length >= 3) {
-      const avg = recentMoods.reduce((s, m) => s + m.rating, 0) / recentMoods.length;
-      const firstHalf = recentMoods.slice(Math.floor(recentMoods.length / 2));
-      const secondHalf = recentMoods.slice(0, Math.floor(recentMoods.length / 2));
-      const avgFirst = firstHalf.reduce((s, m) => s + m.rating, 0) / firstHalf.length;
-      const avgSecond = secondHalf.reduce((s, m) => s + m.rating, 0) / secondHalf.length;
-      if (avgSecond - avgFirst > 1) moodTrend = 'improving recently';
-      else if (avgFirst - avgSecond > 1) moodTrend = 'declining recently';
-      else moodTrend = `fairly steady around ${avg.toFixed(1)}/10`;
+      const oldest = recentMoods[recentMoods.length - 1].rating;
+      const newest = recentMoods[0].rating;
+      if (newest - oldest > 1) {
+        moodTrend = 'improving recently';
+      }
+      else if (oldest - newest > 1) {
+        moodTrend = 'declining recently';
+      }
+      else {
+        moodTrend = 'fairly steady';
+      }
     }
 
+    // time of day
     const hour = new Date().getHours();
     let timeOfDay = 'morning';
-    if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
-    else if (hour >= 17 && hour < 21) timeOfDay = 'evening';
-    else if (hour >= 21 || hour < 5) timeOfDay = 'late night';
-
+    if (hour >= 12 && hour < 17) {
+      timeOfDay = 'afternoon';
+    }
+    else if (hour >= 17 && hour < 21) {
+      timeOfDay = 'evening'; 
+    }  
+    else if (hour >= 21 || hour < 5) {
+      timeOfDay = 'late night';
+    }
     return {
       displayName: user?.display_name || 'Friend',
       currentMood: latestMood?.rating || null,
@@ -47,15 +67,11 @@ export const geminiService = {
     };
   },
 
-  async sendMessage(
-    conversationId: string,
-    userMessage: string,
-    userId: string
-  ): Promise<{ fullResponse: string; crisisDetected: boolean; messageId: string }> {
-    // Pre-screen user message for crisis keywords
+  async sendMessage(conversationId: string, userMessage: string, userId: string): Promise<any> {
+    // check for crisis keywords first
     const crisisCheck = crisisDetectionService.detectInUserMessage(userMessage);
 
-    // Save user message
+    // save the users message to db
     const userMsg = await messageRepository.create({
       conversationId,
       role: 'user',
@@ -63,34 +79,39 @@ export const geminiService = {
       isCrisisFlagged: crisisCheck.severity === 'high',
     });
 
-    // If high severity crisis, respond immediately without AI
+    // if its a high severity crisis, skip the AI and respond right away with resources
     if (crisisCheck.severity === 'high') {
-      const crisisResponse = crisisDetectionService.buildImmediateCrisisResponse();
+      const cResponse = crisisDetectionService.crisisResponse();
       const assistantMsg = await messageRepository.create({
         conversationId,
         role: 'assistant',
-        content: crisisResponse,
+        content: cResponse,
         isCrisisFlagged: true,
       });
       await crisisDetectionService.logCrisisEvent(userId, userMsg.id, crisisCheck);
       await conversationRepository.updateTimestamp(conversationId);
-      return { fullResponse: crisisResponse, crisisDetected: true, messageId: assistantMsg.id };
+      return { fullResponse: cResponse, crisisDetected: true, messageId: assistantMsg.id };
     }
 
-    // Build context
+    // get conversation history and build the prompt
     const history = await messageRepository.getRecent(conversationId, 20);
     const userContext = await this.buildUserContext(userId);
     const systemPrompt = buildSystemPrompt(userContext);
 
-    // Build message history for Gemini
-    const contents = history
-      .filter((m) => m.role !== 'system')
-      .map((msg) => ({
-        role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
-        parts: [{ text: msg.content }],
-      }));
+    // format messages for gemini api
+    const contents: any[] = [];
+    for (let i = 0; i < history.length; i++) {
+      if (history[i].role === 'system') {
+        continue;
+      }
+      contents.push({
+        role: history[i].role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: history[i].content }],
+      });
+    }
 
     try {
+      // call gemini
       const response = await ai.models.generateContent({
         model: CHAT_MODEL,
         systemInstruction: systemPrompt,
@@ -102,9 +123,9 @@ export const geminiService = {
         },
       } as any);
 
-      let responseText = response.text || 'I\'m here for you. Could you tell me a bit more about what\'s on your mind?';
+      let responseText = response.text || "I'm here for you. Could you tell me more about what's on your mind?";
 
-      // Check if AI detected crisis
+      // check if the AI flagged a crisis in its response
       const aiCrisisDetected = crisisDetectionService.detectInAiResponse(responseText);
       if (aiCrisisDetected) {
         responseText = crisisDetectionService.cleanCrisisMarker(responseText);
@@ -118,12 +139,11 @@ export const geminiService = {
 
       const isCrisis = aiCrisisDetected || crisisCheck.severity === 'medium';
 
-      // Log medium severity crisis
       if (crisisCheck.severity === 'medium' && !aiCrisisDetected) {
         await crisisDetectionService.logCrisisEvent(userId, userMsg.id, crisisCheck);
       }
 
-      // Save assistant response
+      // save lunas response
       const assistantMsg = await messageRepository.create({
         conversationId,
         role: 'assistant',
@@ -133,19 +153,16 @@ export const geminiService = {
 
       await conversationRepository.updateTimestamp(conversationId);
 
-      // Auto-generate title if first message pair
+      // set conversation title to the first message
       const msgCount = await messageRepository.countByConversation(conversationId);
       if (msgCount <= 2) {
-        const title = userMessage.length > 50
-          ? userMessage.substring(0, 47) + '...'
-          : userMessage;
-        await conversationRepository.updateTitle(conversationId, title);
+        await conversationRepository.updateTitle(conversationId, userMessage.substring(0, 50));
       }
 
       return { fullResponse: responseText, crisisDetected: isCrisis, messageId: assistantMsg.id };
     } catch (err) {
       logger.error('Gemini API error:', err);
-      const fallback = "I'm having a little trouble right now, but I'm still here. Could you try sending that again?";
+      const fallback = "Something happened. Please try sending that again.";
       const assistantMsg = await messageRepository.create({
         conversationId,
         role: 'assistant',
