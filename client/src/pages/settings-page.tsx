@@ -11,7 +11,6 @@ import apiClient from '../config/api-client';
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -52,7 +51,6 @@ export default function SettingsPage() {
       <Card>
         <h3 className="font-bold text-gray-900 mb-4">Check-in reminders</h3>
         <div className="space-y-4">
-          <Toggle enabled={pushEnabled} onChange={setPushEnabled} label="Push notifications" />
           <Toggle enabled={emailEnabled} onChange={setEmailEnabled} label="Email reminders" />
         </div>
       </Card>

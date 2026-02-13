@@ -21,10 +21,5 @@ export const env = {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
   },
-  vapid: {
-    publicKey: process.env.VAPID_PUBLIC_KEY || '',
-    privateKey: process.env.VAPID_PRIVATE_KEY || '',
-    subject: process.env.VAPID_SUBJECT || 'mailto:admin@mymind.app',
-  },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 } as const;
