@@ -92,10 +92,21 @@ export default function CheckInPage() {
 
   return (
     <div className="max-w-lg mx-auto py-8">
-      {/* progress dots */}
-      <div className="flex justify-center gap-2 mb-10">
+      {/* progress steps */}
+      <div className="flex justify-center items-center gap-3 mb-10">
         {[0, 1, 2].map((i) => (
-          <div key={i} className={`w-8 h-1.5 rounded-full ${i <= step ? 'bg-[#7E57C2]' : 'bg-[#EDE5FF]'}`} />
+          <div
+            key={i}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+              i === step
+                ? 'bg-[#7E57C2] text-white'
+                : i < step
+                  ? 'bg-[#7E57C2] text-white opacity-60'
+                  : 'bg-[#EDE5FF] text-[#7E57C2]'
+            }`}
+          >
+            {i + 1}
+          </div>
         ))}
       </div>
 
@@ -103,7 +114,7 @@ export default function CheckInPage() {
       {step === 0 && (
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">How are you feeling right now?</h2>
-          <p className="text-gray-500 mb-10">Be honest — there are no wrong answers.</p>
+          <p className="text-gray-500 mb-10">Be honest</p>
 
           <div className="inline-flex flex-col items-center p-8 rounded-2xl" style={{ backgroundColor: rating <= 3 ? '#FFE4E9' : rating <= 6 ? '#FFF8E1' : '#E8F5E9' }}>
             <span className="text-6xl mb-4">{getMoodFace()}</span>
@@ -133,11 +144,11 @@ export default function CheckInPage() {
         </div>
       )}
 
-      {/* step 2: emotions - bigger boxes like the reference image */}
+      {/* step 2: emotions */}
       {step === 1 && (
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">How would you describe how you're feeling today?</h2>
-          <p className="text-gray-500 mb-8">Pick as many as feel right.</p>
+          <p className="text-gray-500 mb-8">You may pick multiple</p>
 
           <div className="grid grid-cols-2 gap-3">
             {visibleEmotions.map((emotion) => (

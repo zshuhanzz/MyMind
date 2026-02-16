@@ -10,7 +10,7 @@ A mental wellness web app where users can check in with their mood daily, talk t
 - **AI:** Google Gemini API 
 
 
-###1. Clone the repository
+### 1. Clone the repository
 
 ```bash
 cd "desired file location"

@@ -61,9 +61,9 @@ export default function DashboardPage() {
   const hour = new Date().getHours();
   const name = user?.displayName || 'Friend';
   let greeting = `Hey ${name}`;
-  if (hour >= 5 && hour < 12) greeting = `Good morning, ${name}`;
+  if (hour >= 4 && hour < 12) greeting = `Good morning, ${name}`;
   else if (hour >= 12 && hour < 17) greeting = `Good afternoon, ${name}`;
-  else if (hour >= 17 && hour < 21) greeting = `Good evening, ${name}`;
+  else if (hour >= 17 && hour < 24) greeting = `Good evening, ${name}`;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">

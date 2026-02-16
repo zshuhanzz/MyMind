@@ -275,9 +275,6 @@ export default function ChatPage() {
             <Send size={16} />
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2 text-center">
-          Luna is an AI companion, not a therapist. For emergencies, call 988.
-        </p>
       </div>
     </div>
   );
