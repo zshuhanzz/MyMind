@@ -107,16 +107,16 @@ export const geminiService = {
     }
 
     // get conversation history — serve from cache, fall back to DB
-    const historyCacheKey = `conv-history:${conversationId}`;
+    const historyCacheKey = `conv_history:${conversationId}`;
     let history: any[];
     const cachedHistory = await redis.get(historyCacheKey);
     if (cachedHistory) {
-      logger.info(`[Redis] conv-history cache hit for ${conversationId}`);
+      logger.info(`(Redis) conv_history cache hit for ${conversationId}`);
       history = JSON.parse(cachedHistory);
     } else {
       history = await messageRepository.getRecent(conversationId, 20);
       await redis.setex(historyCacheKey, 300, JSON.stringify(history));
-      logger.info(`[Redis] conv-history cache miss — fetched from DB`);
+      logger.info(`(Redis) conv_history cache miss... fetched from DB`);
     }
 
     const userContext = await this.buildUserContext(userId);
@@ -194,7 +194,7 @@ export const geminiService = {
       return { fullResponse: responseText, crisisDetected: isCrisis, messageId: assistantMsg.id };
     } catch (err) {
       logger.error('Gemini API error:', err);
-      const fallback = "Something happened. Please try sending that again.";
+      const fallback = "Something happened. Send it again.";
       const assistantMsg = await messageRepository.create({
         conversationId,
         role: 'assistant',
