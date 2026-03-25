@@ -1,4 +1,5 @@
 import ai, { CHAT_MODEL } from '../config/gemini.js';
+import redis from '../config/redis.js';
 import { messageRepository } from '../repositories/message.repository.js';
 import { moodEntryRepository } from '../repositories/mood-entry.repository.js';
 import { checkInRepository } from '../repositories/check-in.repository.js';
@@ -11,6 +12,14 @@ import logger from '../utils/logger.js';
 export const geminiService = {
   // get info about the user so luna knows whats going on
   async buildUserContext(userId: string): Promise<any> {
+    const cacheKey = `user-context:${userId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      logger.info(`[Redis] user-context cache hit for ${userId}`);
+      return JSON.parse(cached);
+    }
+
+    const start = Date.now();
     const user = await userRepository.findById(userId);
     const latestMood = await moodEntryRepository.getLatest(userId);
     const recentMoods = await moodEntryRepository.findByUser(userId, 5);
@@ -56,7 +65,7 @@ export const geminiService = {
     else if (hour >= 21 || hour < 5) {
       timeOfDay = 'late night';
     }
-    return {
+    const context = {
       displayName: user?.display_name || 'Friend',
       currentMood: latestMood?.rating || null,
       recentEmotions: uniqueEmotions,
@@ -65,6 +74,10 @@ export const geminiService = {
       streak,
       recentInsights: null,
     };
+
+    logger.info(`[Redis] user-context cache miss — DB queries took ${Date.now() - start}ms`);
+    await redis.setex(cacheKey, 60, JSON.stringify(context));
+    return context;
   },
 
   async sendMessage(conversationId: string, userMessage: string, userId: string): Promise<any> {
