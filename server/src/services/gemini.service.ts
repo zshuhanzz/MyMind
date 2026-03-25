@@ -106,8 +106,19 @@ export const geminiService = {
       return { fullResponse: cResponse, crisisDetected: true, messageId: assistantMsg.id };
     }
 
-    // get conversation history and build the prompt
-    const history = await messageRepository.getRecent(conversationId, 20);
+    // get conversation history — serve from cache, fall back to DB
+    const historyCacheKey = `conv-history:${conversationId}`;
+    let history: any[];
+    const cachedHistory = await redis.get(historyCacheKey);
+    if (cachedHistory) {
+      logger.info(`[Redis] conv-history cache hit for ${conversationId}`);
+      history = JSON.parse(cachedHistory);
+    } else {
+      history = await messageRepository.getRecent(conversationId, 20);
+      await redis.setex(historyCacheKey, 300, JSON.stringify(history));
+      logger.info(`[Redis] conv-history cache miss — fetched from DB`);
+    }
+
     const userContext = await this.buildUserContext(userId);
     const systemPrompt = buildSystemPrompt(userContext);
 
@@ -165,6 +176,14 @@ export const geminiService = {
       });
 
       await conversationRepository.updateTimestamp(conversationId);
+
+      // update conversation history cache with the two new messages
+      const updatedHistory = [
+        ...history,
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: responseText },
+      ].slice(-20);
+      await redis.setex(historyCacheKey, 300, JSON.stringify(updatedHistory));
 
       // set conversation title to the first message
       const msgCount = await messageRepository.countByConversation(conversationId);
